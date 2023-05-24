@@ -10,6 +10,7 @@ import gradio as gr
 import sys
 import os
 
+#put here your personal api
 os.environ["OPENAI_API_KEY"] = ''
 
 def construct_index(directory_path):
