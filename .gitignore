@@ -1,0 +1,5 @@
+.env
+storage/docstore.json
+storage/index_store.json
+storage/vector_store.json
+.gitignore

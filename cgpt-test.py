@@ -4,15 +4,16 @@ from llama_index import (
     GPTVectorStoreIndex,
     LLMPredictor,
     PromptHelper,
+    load_index_from_storage,
+    StorageContext,
     )
 from langchain import OpenAI
 import gradio as gr
 import sys
 import os
+import argparse
 
 #put here your personal api
-os.environ["OPENAI_API_KEY"] = ''
-
 def construct_index(directory_path):
     # Configuration parameters
     MAX_INPUT_SIZE = 4096
@@ -39,9 +40,13 @@ def construct_index(directory_path):
     index = GPTVectorStoreIndex.from_documents(
         documents=documents, service_context=service_context
     )
-
+    index.storage_context.persist()
     #index.save_to_disk('index.json')
+    return index
 
+def load_index():
+    storage_context = StorageContext.from_defaults(persist_dir='./storage')
+    index = load_index_from_storage(storage_context)
     return index
 
 def process_query(input_text):
@@ -49,7 +54,7 @@ def process_query(input_text):
         query_engine = index.as_query_engine()
         response = query_engine.query(input_text)
         return (
-            str(response.response) + "\n\n" + str(response.get_formatted_sources())
+            'Answer:'+str(response.response) + "\n\n" + str(response.get_formatted_sources())
         )
 
 
@@ -57,14 +62,22 @@ def process_query(input_text):
         print(f"Error occurred: {e}", file=sys.stderr)
         return "An error occurred. Please try again."
 
-index = construct_index("docs")
+if __name__ == '__main__':
+    print(os.environ["OPENAI_API_KEY"])
+    # Execute when the module is not initialized from an import statement.
+    parser = argparse.ArgumentParser(description="ChatGPT personal brain")
+    parser.add_argument("-i", "--index", help = "Create index", action='store_true')
+    args = parser.parse_args()
+    if args.index:
+        index = construct_index("docs")
+    else:
+        index = load_index()
+    # Create Gradio interface
+    iface = gr.Interface(
+        fn=process_query,
+        inputs=gr.inputs.Textbox(lines=7, label="Enter your text"),
+        outputs="text",
+        title="Custom-Trained AI",
+    )
 
-# Create Gradio interface
-iface = gr.Interface(
-    fn=process_query,
-    inputs=gr.inputs.Textbox(lines=7, label="Enter your text"),
-    outputs="text",
-    title="Custom-Trained AI",
-)
-
-iface.launch(server_name="0.0.0.0", server_port=7060, share=False)
+    iface.launch(server_name="0.0.0.0", server_port=7060, share=False)
